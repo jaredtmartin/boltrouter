@@ -1,4 +1,4 @@
-package route_test
+package boltrouter_test
 
 import (
 	"bytes"
@@ -6,28 +6,24 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/jaredtmartin/route"
+	"github.com/jaredtmartin/bolt-go"
+	"github.com/jaredtmartin/boltrouter"
 )
 
-func handleGetDog(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("Hello, World! Let's Get a Dog!"))
+func handleGetDog(w http.ResponseWriter, r *http.Request) (bolt.Element, error) {
+	return bolt.String("Hello, World! Let's Get a Dog!"), nil
 }
-func handlePostDog(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("Hello, World! Let's Post a Dog!"))
+func handlePostDog(w http.ResponseWriter, r *http.Request) (bolt.Element, error) {
+	return bolt.String("Hello, World! Let's Post a Dog!"), nil
 }
-func handleDeleteDog(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("Hello, World! Let's Delete a Dog!"))
+func handleDeleteDog(w http.ResponseWriter, r *http.Request) (bolt.Element, error) {
+	return bolt.String("Hello, World! Let's Delete a Dog!"), nil
 }
-func handlePutDog(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("Hello, World! Let's Put a Dog!"))
+func handlePutDog(w http.ResponseWriter, r *http.Request) (bolt.Element, error) {
+	return bolt.String("Hello, World! Let's Put a Dog!"), nil
 }
-func handlePatchDog(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("Hello, World! Let's Patch a Dog!"))
+func handlePatchDog(w http.ResponseWriter, r *http.Request) (bolt.Element, error) {
+	return bolt.String("Hello, World! Let's Patch a Dog!"), nil
 }
 
 func testRoute(server *httptest.Server, method, path, expectedBody string, t *testing.T) {
@@ -49,9 +45,16 @@ func testRoute(server *httptest.Server, method, path, expectedBody string, t *te
 		t.Errorf("Expected response body %q for %s request, got %q", expectedBody, method, body)
 	}
 }
+func layout(w http.ResponseWriter, r *http.Request, elements ...bolt.Element) bolt.Element {
+	return bolt.Div("layout", elements...)
+}
+func errorPage(err error) bolt.Element {
+	return bolt.Div("error", bolt.String(err.Error()))
+}
 func TestGet(t *testing.T) {
 	mux := http.NewServeMux()
-	route.Path(mux, "/dog").Get(handleGetDog)
+	router := boltrouter.NewRouter(mux, layout, errorPage)
+	router.Path("/dog").Get(handleGetDog)
 	server := httptest.NewServer(mux)
 	defer server.Close()
 	testRoute(server, "GET", "/dog", "Hello, World! Let's Get a Dog!", t)
@@ -60,7 +63,8 @@ func TestGet(t *testing.T) {
 }
 func TestMultiMethod(t *testing.T) {
 	mux := http.NewServeMux()
-	route.Path(mux, "/dog").
+	router := boltrouter.NewRouter(mux, layout, errorPage)
+	router.Path("/dog").
 		Get(handleGetDog).
 		Post(handlePostDog).
 		Delete(handleDeleteDog).

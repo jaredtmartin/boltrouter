@@ -1,66 +1,90 @@
-package route
+package boltrouter
 
 import (
 	"maps"
 	"net/http"
+
+	"github.com/jaredtmartin/bolt-go"
 )
 
-type Handler func(http.ResponseWriter, *http.Request)
-type RouteType map[string]Handler
+type Layout func(http.ResponseWriter, *http.Request, ...bolt.Element) bolt.Element
+type Handler func(http.ResponseWriter, *http.Request) (bolt.Element, error)
+type PathType map[string]Handler
+type ErrorPage func(error) bolt.Element
 
-// type Router map[string]Route
+type Router struct {
+	layout    Layout
+	routes    map[string]*PathType
+	errorPage ErrorPage
+	mux       *http.ServeMux
+}
 
-var routes = make(map[string]*RouteType)
+func NewRouter(mux *http.ServeMux, layout Layout, errorPage ErrorPage) *Router {
+	return &Router{
+		layout:    layout,
+		routes:    make(map[string]*PathType),
+		errorPage: errorPage,
+		mux:       mux,
+	}
+}
 
-func (r *RouteType) Handle(method string, handler Handler) *RouteType {
+func (router *Router) Route(routes func(r *Router)) {
+	routes(router)
+}
+func (router *Router) Path(path string) *PathType {
+	if router.routes[path] == nil {
+		router.routes[path] = &PathType{}
+	}
+	router.mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
+		pathHandler(w, r, router, router.routes[path])
+	})
+	return router.routes[path]
+}
+
+func (r *PathType) Handle(method string, handler Handler) *PathType {
 	(*r)[method] = handler
 	return r
 }
 
-func (r *RouteType) Map(route RouteType) *RouteType {
+func (r *PathType) Map(route PathType) *PathType {
 	maps.Copy(*r, route)
 	return r
 }
 
-func (r *RouteType) Get(handler Handler) *RouteType {
+func (r *PathType) Get(handler Handler) *PathType {
 	(*r)[http.MethodGet] = handler
 	return r
 }
-func (r *RouteType) Post(handler Handler) *RouteType {
+func (r *PathType) Post(handler Handler) *PathType {
 	(*r)[http.MethodPost] = handler
 	return r
 }
-func (r *RouteType) Delete(handler Handler) *RouteType {
+func (r *PathType) Delete(handler Handler) *PathType {
 	(*r)[http.MethodDelete] = handler
 	return r
 }
-func (r *RouteType) Put(handler Handler) *RouteType {
+func (r *PathType) Put(handler Handler) *PathType {
 	(*r)[http.MethodPut] = handler
 	return r
 }
-func (r *RouteType) Patch(handler Handler) *RouteType {
+func (r *PathType) Patch(handler Handler) *PathType {
 	(*r)[http.MethodPatch] = handler
 	return r
 }
 
-func Path(mux *http.ServeMux, path string) *RouteType {
-	if routes[path] == nil {
-		routes[path] = &RouteType{}
-	}
-	mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
-		pathHandler(w, r, *routes[path])
-	})
-	return routes[path]
-}
-
-func pathHandler(w http.ResponseWriter, r *http.Request, methods RouteType) {
-	if handler, ok := methods[r.Method]; ok && handler != nil {
-		handler(w, r)
+func pathHandler(w http.ResponseWriter, r *http.Request, router *Router, methods *PathType) {
+	if handler, ok := (*methods)[r.Method]; ok && handler != nil {
+		element, err := handler(w, r)
+		if err != nil {
+			if r.Header.Get("HX-Request") != "" {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			router.errorPage(err).Send(w)
+			return
+		}
+		router.layout(w, r, element).Send(w)
 		return
 	}
 	http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 }
-
-// func Get(mux *http.ServeMux, path string, handler Handler) {
-// 	Route(mux, path).Handle("GET", handler)
-// }
