@@ -56,8 +56,8 @@ func testRoute(server *httptest.Server, method, path, expectedBody string, t *te
 func layout(w http.ResponseWriter, r *http.Request, elements ...bolt.Element) bolt.Element {
 	return bolt.NewElement("layout").Children(elements...)
 }
-func errorPage(err error, children ...bolt.Element) bolt.Element {
-	return bolt.NewElement("error").Text(err.Error()).Children(children...)
+func errorPage(err error) bolt.Element {
+	return bolt.NewElement("error").Text(err.Error())
 }
 
 func TestGet(t *testing.T) {
@@ -103,9 +103,7 @@ func TestErrors(t *testing.T) {
 	mux := http.NewServeMux()
 	router := boltrouter.NewRouter(mux, layout, errorPage)
 	router.Path("/err").Get(handleSimpleError)
-	router.Path("/auth").Get(handleErrorWithContent)
 	server := httptest.NewServer(mux)
 	defer server.Close()
 	testRoute(server, "GET", "/err", "<error>Something went wrong!</error>", t)
-	testRoute(server, "GET", "/auth", "<error><a href=\"/login\" type=\"button\">Log In</a>You're not logged in.</error>", t)
 }

@@ -11,7 +11,7 @@ import (
 type Layout func(http.ResponseWriter, *http.Request, ...bolt.Element) bolt.Element
 type Handler func(http.ResponseWriter, *http.Request) (bolt.Element, error)
 type PathType map[string]Handler
-type ErrorPage func(error, ...bolt.Element) bolt.Element
+type ErrorPage func(error) bolt.Element
 
 type Router struct {
 	layout    Layout
@@ -92,7 +92,7 @@ func pathHandler(w http.ResponseWriter, r *http.Request, router *Router, methods
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			router.errorPage(err, element).Send(w)
+			router.errorPage(err).Send(w)
 			return
 		}
 		router.layout(w, r, element).Send(w)
