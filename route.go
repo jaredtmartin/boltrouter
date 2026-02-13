@@ -1,6 +1,7 @@
 package boltrouter
 
 import (
+	"log"
 	"maps"
 	"net/http"
 
@@ -17,6 +18,7 @@ type Router struct {
 	routes    map[string]*PathType
 	errorPage ErrorPage
 	mux       *http.ServeMux
+	verbose   bool
 }
 
 func NewRouter(mux *http.ServeMux, layout Layout, errorPage ErrorPage) *Router {
@@ -34,6 +36,9 @@ func (router *Router) Route(routes func(r *Router)) {
 func (r *Router) Handle(w http.ResponseWriter, r2 *http.Request) {
 	http.Handle("/public/", http.StripPrefix("/public/", http.FileServer(http.Dir("public"))))
 }
+func (r *Router) Verbose(verbose bool) {
+	r.verbose = verbose
+}
 func (router *Router) Path(path string) *PathType {
 	if router.routes[path] == nil {
 		router.routes[path] = &PathType{}
@@ -41,6 +46,9 @@ func (router *Router) Path(path string) *PathType {
 	router.mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
 		pathHandler(w, r, router, router.routes[path])
 	})
+	if router.verbose {
+		log.Println("Added route:", path)
+	}
 	return router.routes[path]
 }
 

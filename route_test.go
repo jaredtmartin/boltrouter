@@ -60,9 +60,6 @@ func errorPage(err error, children ...bolt.Element) bolt.Element {
 	return bolt.NewElement("error").Text(err.Error()).Children(children...)
 }
 
-/*************  ✨ Windsurf Command ⭐  *************/
-// TestGet tests the boltrouter.Router.Get method by performing a GET, POST, and GET on a non-existent path.
-/*******  5376bd15-cbf6-41ce-87e8-b68882fae18f  *******/
 func TestGet(t *testing.T) {
 	mux := http.NewServeMux()
 	router := boltrouter.NewRouter(mux, layout, errorPage)
