@@ -30,8 +30,9 @@ func NewRouter(mux *http.ServeMux, layout Layout, errorPage ErrorPage) *Router {
 	}
 }
 
-func (router *Router) Route(routes func(r *Router)) {
+func (router *Router) Route(routes func(r *Router)) *Router {
 	routes(router)
+	return router
 }
 func (r *Router) Handle(w http.ResponseWriter, r2 *http.Request) {
 	http.Handle("/public/", http.StripPrefix("/public/", http.FileServer(http.Dir("public"))))
