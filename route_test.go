@@ -2,6 +2,7 @@ package boltrouter_test
 
 import (
 	"bytes"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -25,8 +26,15 @@ func handlePutDog(w http.ResponseWriter, r *http.Request) (bolt.Element, error) 
 func handlePatchDog(w http.ResponseWriter, r *http.Request) (bolt.Element, error) {
 	return bolt.String("Hello, World! Let's Patch a Dog!"), nil
 }
+func handleSimpleError(w http.ResponseWriter, r *http.Request) (bolt.Element, error) {
+	return nil, fmt.Errorf("Something went wrong!")
+}
+func handleErrorWithContent(w http.ResponseWriter, r *http.Request) (bolt.Element, error) {
+	return bolt.Button("Log In").Href("/login"), fmt.Errorf("You're not logged in.")
+}
 
 func testRoute(server *httptest.Server, method, path, expectedBody string, t *testing.T) {
+	t.Helper()
 	req, err := http.NewRequest(method, server.URL+path, nil)
 	if err != nil {
 		t.Fatalf("Failed to create %s request: %v", method, err)
@@ -46,18 +54,22 @@ func testRoute(server *httptest.Server, method, path, expectedBody string, t *te
 	}
 }
 func layout(w http.ResponseWriter, r *http.Request, elements ...bolt.Element) bolt.Element {
-	return bolt.Div("layout", elements...)
+	return bolt.NewElement("layout").Children(elements...)
 }
-func errorPage(err error) bolt.Element {
-	return bolt.Div("error", bolt.String(err.Error()))
+func errorPage(err error, children ...bolt.Element) bolt.Element {
+	return bolt.NewElement("error").Text(err.Error()).Children(children...)
 }
+
+/*************  ✨ Windsurf Command ⭐  *************/
+// TestGet tests the boltrouter.Router.Get method by performing a GET, POST, and GET on a non-existent path.
+/*******  5376bd15-cbf6-41ce-87e8-b68882fae18f  *******/
 func TestGet(t *testing.T) {
 	mux := http.NewServeMux()
 	router := boltrouter.NewRouter(mux, layout, errorPage)
 	router.Path("/dog").Get(handleGetDog)
 	server := httptest.NewServer(mux)
 	defer server.Close()
-	testRoute(server, "GET", "/dog", "Hello, World! Let's Get a Dog!", t)
+	testRoute(server, "GET", "/dog", "<layout>Hello, World! Let's Get a Dog!</layout>", t)
 	testRoute(server, "POST", "/dog", "Method Not Allowed\n", t)
 	testRoute(server, "GET", "/cat", "404 page not found\n", t)
 }
@@ -73,10 +85,30 @@ func TestMultiMethod(t *testing.T) {
 
 	server := httptest.NewServer(mux)
 	defer server.Close()
-	testRoute(server, "GET", "/dog", "Hello, World! Let's Get a Dog!", t)
-	testRoute(server, "POST", "/dog", "Hello, World! Let's Post a Dog!", t)
-	testRoute(server, "DELETE", "/dog", "Hello, World! Let's Delete a Dog!", t)
-	testRoute(server, "PUT", "/dog", "Hello, World! Let's Put a Dog!", t)
-	testRoute(server, "PATCH", "/dog", "Hello, World! Let's Patch a Dog!", t)
+	testRoute(server, "GET", "/dog", "<layout>Hello, World! Let's Get a Dog!</layout>", t)
+	testRoute(server, "POST", "/dog", "<layout>Hello, World! Let's Post a Dog!</layout>", t)
+	testRoute(server, "DELETE", "/dog", "<layout>Hello, World! Let's Delete a Dog!</layout>", t)
+	testRoute(server, "PUT", "/dog", "<layout>Hello, World! Let's Put a Dog!</layout>", t)
+	testRoute(server, "PATCH", "/dog", "<layout>Hello, World! Let's Patch a Dog!</layout>", t)
 	testRoute(server, "PATCH", "/cat", "404 page not found\n", t)
+}
+func TestPost(t *testing.T) {
+	mux := http.NewServeMux()
+	router := boltrouter.NewRouter(mux, layout, errorPage)
+	router.Path("/dog").Post(handlePostDog)
+	server := httptest.NewServer(mux)
+	defer server.Close()
+	testRoute(server, "POST", "/dog", "<layout>Hello, World! Let's Post a Dog!</layout>", t)
+	testRoute(server, "GET", "/dog", "Method Not Allowed\n", t)
+	testRoute(server, "POST", "/cat", "404 page not found\n", t)
+}
+func TestErrors(t *testing.T) {
+	mux := http.NewServeMux()
+	router := boltrouter.NewRouter(mux, layout, errorPage)
+	router.Path("/err").Get(handleSimpleError)
+	router.Path("/auth").Get(handleErrorWithContent)
+	server := httptest.NewServer(mux)
+	defer server.Close()
+	testRoute(server, "GET", "/err", "<error>Something went wrong!</error>", t)
+	testRoute(server, "GET", "/auth", "<error><a href=\"/login\" type=\"button\">Log In</a>You're not logged in.</error>", t)
 }

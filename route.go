@@ -10,7 +10,7 @@ import (
 type Layout func(http.ResponseWriter, *http.Request, ...bolt.Element) bolt.Element
 type Handler func(http.ResponseWriter, *http.Request) (bolt.Element, error)
 type PathType map[string]Handler
-type ErrorPage func(error) bolt.Element
+type ErrorPage func(error, ...bolt.Element) bolt.Element
 
 type Router struct {
 	layout    Layout
@@ -30,6 +30,9 @@ func NewRouter(mux *http.ServeMux, layout Layout, errorPage ErrorPage) *Router {
 
 func (router *Router) Route(routes func(r *Router)) {
 	routes(router)
+}
+func (r *Router) Handle(w http.ResponseWriter, r2 *http.Request) {
+	http.Handle("/public/", http.StripPrefix("/public/", http.FileServer(http.Dir("public"))))
 }
 func (router *Router) Path(path string) *PathType {
 	if router.routes[path] == nil {
@@ -80,7 +83,7 @@ func pathHandler(w http.ResponseWriter, r *http.Request, router *Router, methods
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			router.errorPage(err).Send(w)
+			router.errorPage(err, element).Send(w)
 			return
 		}
 		router.layout(w, r, element).Send(w)
