@@ -92,7 +92,7 @@ func pathHandler(w http.ResponseWriter, r *http.Request, router *Router, methods
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			router.errorPage(err).Send(w)
+			router.layout(w, r, router.errorPage(err)).Send(w)
 			return
 		}
 		router.layout(w, r, element).Send(w)
