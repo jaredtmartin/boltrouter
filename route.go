@@ -34,11 +34,14 @@ func (router *Router) Route(routes func(r *Router)) *Router {
 	routes(router)
 	return router
 }
-func (r *Router) Handle(w http.ResponseWriter, r2 *http.Request) {
-	http.Handle("/public/", http.StripPrefix("/public/", http.FileServer(http.Dir("public"))))
+func (router *Router) Handle(pattern string, handler func(http.ResponseWriter, *http.Request)) {
+	router.Mux.HandleFunc(pattern, handler)
 }
-func (r *Router) Verbose(verbose bool) {
-	r.verbose = verbose
+func (router *Router) Verbose(verbose bool) {
+	router.verbose = verbose
+}
+func (router *Router) HandleFunc(pattern string, handler func(http.ResponseWriter, *http.Request)) {
+	router.Mux.HandleFunc(pattern, handler)
 }
 func (router *Router) Path(path string) *PathType {
 	if router.routes[path] == nil {
