@@ -17,7 +17,7 @@ type Router struct {
 	layout    Layout
 	routes    map[string]*PathType
 	errorPage ErrorPage
-	mux       *http.ServeMux
+	Mux       *http.ServeMux
 	verbose   bool
 }
 
@@ -26,7 +26,7 @@ func NewRouter(mux *http.ServeMux, layout Layout, errorPage ErrorPage) *Router {
 		layout:    layout,
 		routes:    make(map[string]*PathType),
 		errorPage: errorPage,
-		mux:       mux,
+		Mux:       mux,
 	}
 }
 
@@ -44,7 +44,7 @@ func (router *Router) Path(path string) *PathType {
 	if router.routes[path] == nil {
 		router.routes[path] = &PathType{}
 	}
-	router.mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
+	router.Mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
 		pathHandler(w, r, router, router.routes[path])
 	})
 	if router.verbose {
