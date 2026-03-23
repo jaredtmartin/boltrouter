@@ -51,7 +51,7 @@ func (router *Router) Path(path string) *PathType {
 		pathHandler(w, r, router, router.routes[path])
 	})
 	if router.verbose {
-		log.Println("Added route:", path)
+		log.Println("Added route:", urlFromPath(path))
 	}
 	return router.routes[path]
 }

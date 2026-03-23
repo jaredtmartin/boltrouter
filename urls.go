@@ -23,11 +23,14 @@ func filterEmptyStrings(parts []string) []string {
 	return result
 }
 func Url(root string, id string, suffixes ...string) string {
+	return urlFromPath(Path(root, id, suffixes...))
+}
+func urlFromPath(path string) string {
 	host := os.Getenv("HOST")
 	env := os.Getenv("ENV")
 	protocol := "http"
 	if env == "production" {
 		protocol = "https"
 	}
-	return fmt.Sprintf("%s://%s%s", protocol, host, Path(root, id, suffixes...))
+	return fmt.Sprintf("%s://%s%s", protocol, host, path)
 }
