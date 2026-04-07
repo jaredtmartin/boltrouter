@@ -59,5 +59,6 @@ echo "New tag will be: $NEW_TAG"
 # Create new tag and push it
 git tag "$NEW_TAG"
 git push origin "$NEW_TAG"
+git push
 
 echo "Tagged current commit with new version: $NEW_TAG"

@@ -9,29 +9,59 @@ import (
 )
 
 type Layout func(http.ResponseWriter, *http.Request, ...bolt.Element) bolt.Element
-type Handler func(http.ResponseWriter, *http.Request) (bolt.Element, error)
+type Handler func(http.ResponseWriter, *http.Request) *ResponseType
 type PathType map[string]Handler
-type ErrorPage func(error) bolt.Element
+type BranchType map[string]*PathType
+type ErrorPage func(err Error) bolt.Element
+type ResponseType struct {
+	content bolt.Element
+	err     Error
+}
+
+func Response() *ResponseType {
+	return &ResponseType{
+		content: nil,
+		err:     nil,
+	}
+}
+func Content(content bolt.Element) *ResponseType {
+	return &ResponseType{
+		content: content,
+		err:     nil,
+	}
+}
+func (r *ResponseType) Content(content bolt.Element) *ResponseType {
+	r.content = content
+	return r
+}
+func (r *ResponseType) Error(message string, details ...string) *ResponseType {
+	r.err = NewError(message, details...)
+	return r
+}
 
 type Router struct {
 	layout    Layout
-	routes    map[string]*PathType
+	routes    BranchType
 	errorPage ErrorPage
 	Mux       *http.ServeMux
 	verbose   bool
 }
 
+func Branch() BranchType {
+	return make(BranchType)
+}
 func NewRouter(mux *http.ServeMux, layout Layout, errorPage ErrorPage) *Router {
 	return &Router{
 		layout:    layout,
-		routes:    make(map[string]*PathType),
+		routes:    Branch(),
 		errorPage: errorPage,
 		Mux:       mux,
 	}
 }
-
-func (router *Router) Route(routes func(r *Router)) *Router {
-	routes(router)
+func (router *Router) Route(routes BranchType) *Router {
+	for path, route := range routes {
+		router.Path(path).Map(*route)
+	}
 	return router
 }
 func (router *Router) Handle(pattern string, handler func(http.ResponseWriter, *http.Request)) {
@@ -48,7 +78,7 @@ func (router *Router) Path(path string) *PathType {
 		router.routes[path] = &PathType{}
 	}
 	router.Mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
-		pathHandler(w, r, router, router.routes[path])
+		pathHandler(w, r, router, *router.routes[path])
 	})
 	if router.verbose {
 		log.Println("Added route:", urlFromPath(path))
@@ -87,18 +117,18 @@ func (r *PathType) Patch(handler Handler) *PathType {
 	return r
 }
 
-func pathHandler(w http.ResponseWriter, r *http.Request, router *Router, methods *PathType) {
-	if handler, ok := (*methods)[r.Method]; ok && handler != nil {
-		element, err := handler(w, r)
-		if err != nil {
+func pathHandler(w http.ResponseWriter, r *http.Request, router *Router, methods PathType) {
+	if handler, ok := (methods)[r.Method]; ok && handler != nil {
+		response := handler(w, r)
+		if response.err != nil {
 			if r.Header.Get("HX-Request") != "" {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				http.Error(w, response.err.Error(), http.StatusInternalServerError)
 				return
 			}
-			router.layout(w, r, router.errorPage(err)).Send(w)
+			router.layout(w, r, router.errorPage(response.err)).Send(w)
 			return
 		}
-		router.layout(w, r, element).Send(w)
+		router.layout(w, r, response.content).Send(w)
 		return
 	}
 	http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)

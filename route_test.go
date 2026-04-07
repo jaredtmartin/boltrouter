@@ -2,36 +2,39 @@ package boltrouter_test
 
 import (
 	"bytes"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/jaredtmartin/bolt-go"
-	"github.com/jaredtmartin/boltrouter"
+	. "github.com/jaredtmartin/boltrouter"
 )
 
-func handleGetDog(w http.ResponseWriter, r *http.Request) (bolt.Element, error) {
-	return bolt.String("Hello, World! Let's Get a Dog!"), nil
+func handleGetDog(w http.ResponseWriter, r *http.Request) *ResponseType {
+	return Content(bolt.String("Hello, World! Let's Get a Dog!"))
 }
-func handlePostDog(w http.ResponseWriter, r *http.Request) (bolt.Element, error) {
-	return bolt.String("Hello, World! Let's Post a Dog!"), nil
+func handlePostDog(w http.ResponseWriter, r *http.Request) *ResponseType {
+	return Content(bolt.String("Hello, World! Let's Post a Dog!"))
 }
-func handleDeleteDog(w http.ResponseWriter, r *http.Request) (bolt.Element, error) {
-	return bolt.String("Hello, World! Let's Delete a Dog!"), nil
+func handleDeleteDog(w http.ResponseWriter, r *http.Request) *ResponseType {
+	return Content(bolt.String("Hello, World! Let's Delete a Dog!"))
 }
-func handlePutDog(w http.ResponseWriter, r *http.Request) (bolt.Element, error) {
-	return bolt.String("Hello, World! Let's Put a Dog!"), nil
+func handlePutDog(w http.ResponseWriter, r *http.Request) *ResponseType {
+	return Content(bolt.String("Hello, World! Let's Put a Dog!"))
 }
-func handlePatchDog(w http.ResponseWriter, r *http.Request) (bolt.Element, error) {
-	return bolt.String("Hello, World! Let's Patch a Dog!"), nil
+func handlePatchDog(w http.ResponseWriter, r *http.Request) *ResponseType {
+	return Content(bolt.String("Hello, World! Let's Patch a Dog!"))
 }
-func handleSimpleError(w http.ResponseWriter, r *http.Request) (bolt.Element, error) {
-	return nil, fmt.Errorf("Something went wrong!")
+func handleSimpleError(w http.ResponseWriter, r *http.Request) *ResponseType {
+	return Response().Error("Something went wrong!")
 }
-func handleErrorWithContent(w http.ResponseWriter, r *http.Request) (bolt.Element, error) {
-	return bolt.Button("Log In").Href("/login"), fmt.Errorf("You're not logged in.")
+func handleDetailedError(w http.ResponseWriter, r *http.Request) *ResponseType {
+	return Response().Error("Something went wrong!", "Details about the error.")
 }
+
+// func handleErrorWithContent(w http.ResponseWriter, r *http.Request) *ResponseType {
+// 	return Response().Content(bolt.Button("Log In").Href("/login")).Error("You're not logged in.")
+// }
 
 func testRoute(server *httptest.Server, method, path, expectedBody string, t *testing.T) {
 	t.Helper()
@@ -56,13 +59,16 @@ func testRoute(server *httptest.Server, method, path, expectedBody string, t *te
 func layout(w http.ResponseWriter, r *http.Request, elements ...bolt.Element) bolt.Element {
 	return bolt.NewElement("layout").Children(elements...)
 }
-func errorPage(err error) bolt.Element {
-	return bolt.NewElement("error").Text(err.Error())
+func errorPage(err Error) bolt.Element {
+	return bolt.NewElement("div").Children(
+		bolt.NewElement("msg").Text(err.Error()),
+		bolt.NewElement("detail").Text(err.Detail()),
+	)
 }
 
 func TestGet(t *testing.T) {
 	mux := http.NewServeMux()
-	router := boltrouter.NewRouter(mux, layout, errorPage)
+	router := NewRouter(mux, layout, errorPage)
 	router.Path("/dog").Get(handleGetDog)
 	server := httptest.NewServer(mux)
 	defer server.Close()
@@ -72,7 +78,7 @@ func TestGet(t *testing.T) {
 }
 func TestMultiMethod(t *testing.T) {
 	mux := http.NewServeMux()
-	router := boltrouter.NewRouter(mux, layout, errorPage)
+	router := NewRouter(mux, layout, errorPage)
 	router.Path("/dog").
 		Get(handleGetDog).
 		Post(handlePostDog).
@@ -91,7 +97,7 @@ func TestMultiMethod(t *testing.T) {
 }
 func TestPost(t *testing.T) {
 	mux := http.NewServeMux()
-	router := boltrouter.NewRouter(mux, layout, errorPage)
+	router := NewRouter(mux, layout, errorPage)
 	router.Path("/dog").Post(handlePostDog)
 	server := httptest.NewServer(mux)
 	defer server.Close()
@@ -101,9 +107,14 @@ func TestPost(t *testing.T) {
 }
 func TestErrors(t *testing.T) {
 	mux := http.NewServeMux()
-	router := boltrouter.NewRouter(mux, layout, errorPage)
+	router := NewRouter(mux, layout, errorPage)
 	router.Path("/err").Get(handleSimpleError)
 	server := httptest.NewServer(mux)
 	defer server.Close()
-	testRoute(server, "GET", "/err", "<error>Something went wrong!</error>", t)
+	testRoute(server, "GET", "/err", "<layout><div><msg>Something went wrong!</msg><detail></detail></div></layout>", t)
+	// router.Path("/err2").Get(handleErrorWithContent)
+	// testRoute(server, "GET", "/err2", "<layout><div><msg>You're not logged in.</msg><detail><a href=\"/login\">Log In</a></detail></div></layout>", t)
+	router.Path("/err3").Get(handleDetailedError)
+	testRoute(server, "GET", "/err3", "<layout><div><msg>Something went wrong!</msg><detail>Details about the error.</detail></div></layout>", t)
+
 }
