@@ -16,10 +16,20 @@ type PathType map[string]Handler
 type BranchType map[string]*PathType
 type ErrorPageType func(err ResponseType) bolt.Element
 type ResponseType interface {
+	Error(err error) *ResponseStruct
+	Content(content ...bolt.Element) *ResponseStruct
+	Success(msg string) *ResponseStruct
+	Header(key, value string) *ResponseStruct
+	Warning(msg string) *ResponseStruct
+	Info(msg string) *ResponseStruct
+	Redirect(msg string) *ResponseStruct
+	PushUrl(url string) *ResponseStruct
+	ReplaceUrl(url string) *ResponseStruct
 	Err() error
 	ErrPublic() string
 	ErrDetail() string
 	GetContent() []bolt.Element
+	Wrap(msg string) *ResponseStruct
 }
 type ResponseStruct struct {
 	content []bolt.Element
@@ -92,7 +102,7 @@ func (r *ResponseStruct) GetContent() []bolt.Element {
 }
 
 // Error(err).WrapErr("This dog has wandered off.")
-func (r *ResponseStruct) WrapErr(msg string) *ResponseStruct {
+func (r *ResponseStruct) Wrap(msg string) *ResponseStruct {
 	r.err = fmt.Errorf("%s: %w", msg, r.err)
 	return r
 }
