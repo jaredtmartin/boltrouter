@@ -12,7 +12,7 @@ import (
 )
 
 func handleGetDog(w http.ResponseWriter, r *http.Request) Response {
-	return Content(bolt.String("Hello, World! Let's Get a Dog!"))
+	return Content(bolt.String("Hello, World! Let's Get a Dog!"), bolt.String("Here's some more content!"))
 }
 func handlePostDog(w http.ResponseWriter, r *http.Request) Response {
 	return Content(bolt.String("Hello, World! Let's Post a Dog!"))
@@ -75,7 +75,7 @@ func TestGet(t *testing.T) {
 	router.Path("/dog").Get(handleGetDog)
 	server := httptest.NewServer(mux)
 	defer server.Close()
-	testRoute(server, "GET", "/dog", "<layout>Hello, World! Let's Get a Dog!</layout>", t)
+	testRoute(server, "GET", "/dog", "<layout>Hello, World! Let's Get a Dog!Here's some more content!</layout>", t)
 	testRoute(server, "POST", "/dog", "Method Not Allowed\n", t)
 	testRoute(server, "GET", "/cat", "404 page not found\n", t)
 }
@@ -91,7 +91,7 @@ func TestMultiMethod(t *testing.T) {
 
 	server := httptest.NewServer(mux)
 	defer server.Close()
-	testRoute(server, "GET", "/dog", "<layout>Hello, World! Let's Get a Dog!</layout>", t)
+	testRoute(server, "GET", "/dog", "<layout>Hello, World! Let's Get a Dog!Here's some more content!</layout>", t)
 	testRoute(server, "POST", "/dog", "<layout>Hello, World! Let's Post a Dog!</layout>", t)
 	testRoute(server, "DELETE", "/dog", "<layout>Hello, World! Let's Delete a Dog!</layout>", t)
 	testRoute(server, "PUT", "/dog", "<layout>Hello, World! Let's Put a Dog!</layout>", t)

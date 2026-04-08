@@ -20,10 +20,10 @@ type Response interface {
 	Err() error
 	ErrPublic() string
 	ErrDetail() string
-	Content() bolt.Element
+	Content() []bolt.Element
 }
 type ResponseStruct struct {
-	content bolt.Element
+	content []bolt.Element
 	err     error
 }
 
@@ -57,7 +57,7 @@ func (r *ResponseStruct) ErrDetail() string {
 	// join all the parts after the first one with :
 	return strings.TrimSpace(strings.Join(parts[1:], ": "))
 }
-func (r *ResponseStruct) Content() bolt.Element {
+func (r *ResponseStruct) Content() []bolt.Element {
 	return r.content
 }
 
@@ -67,7 +67,7 @@ func (r *ResponseStruct) WrapErr(msg string) *ResponseStruct {
 	return r
 }
 
-func Content(content bolt.Element) Response {
+func Content(content ...bolt.Element) Response {
 	return &ResponseStruct{
 		content: content,
 	}
@@ -167,7 +167,7 @@ func pathHandler(w http.ResponseWriter, r *http.Request, router *Router, methods
 			router.layout(w, r, router.errorPage(response)).Send(w)
 			return
 		}
-		router.layout(w, r, response.Content()).Send(w)
+		router.layout(w, r, bolt.Fragment(response.Content()...)).Send(w)
 		return
 	}
 	http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
