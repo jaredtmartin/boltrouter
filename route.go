@@ -14,7 +14,7 @@ type Layout func(http.ResponseWriter, *http.Request, ...bolt.Element) bolt.Eleme
 type Handler func(http.ResponseWriter, *http.Request) Response
 type PathType map[string]Handler
 type BranchType map[string]*PathType
-type ErrorPage func(err Response) bolt.Element
+type ErrorPageType func(err Response) bolt.Element
 type Response interface {
 	Error() string
 	Err() error
@@ -81,7 +81,7 @@ func Error(err error) Response {
 type Router struct {
 	layout    Layout
 	routes    BranchType
-	errorPage ErrorPage
+	errorPage ErrorPageType
 	Mux       *http.ServeMux
 	verbose   bool
 }
@@ -89,7 +89,7 @@ type Router struct {
 func Branch() BranchType {
 	return make(BranchType)
 }
-func NewRouter(mux *http.ServeMux, layout Layout, errorPage ErrorPage) *Router {
+func NewRouter(mux *http.ServeMux, layout Layout, errorPage ErrorPageType) *Router {
 	return &Router{
 		layout:    layout,
 		routes:    Branch(),
