@@ -194,6 +194,9 @@ func (r *PathType) Patch(handler Handler) *PathType {
 func pathHandler(w http.ResponseWriter, r *http.Request, router *Router, methods PathType) {
 	if handler, ok := (methods)[r.Method]; ok && handler != nil {
 		response := handler(w, r)
+		for key, value := range response.(*ResponseStruct).headers {
+			w.Header().Set(key, value)
+		}
 		if response.Err() != nil {
 			if r.Header.Get("HX-Request") != "" {
 				http.Error(w, response.ErrPublic(), http.StatusInternalServerError)
