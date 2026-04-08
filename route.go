@@ -1,42 +1,81 @@
 package boltrouter
 
 import (
+	"fmt"
 	"log"
 	"maps"
 	"net/http"
+	"strings"
 
 	"github.com/jaredtmartin/bolt-go"
 )
 
 type Layout func(http.ResponseWriter, *http.Request, ...bolt.Element) bolt.Element
-type Handler func(http.ResponseWriter, *http.Request) *ResponseType
+type Handler func(http.ResponseWriter, *http.Request) Response
 type PathType map[string]Handler
 type BranchType map[string]*PathType
-type ErrorPage func(err Error) bolt.Element
-type ResponseType struct {
+type ErrorPage func(err Response) bolt.Element
+type Response interface {
+	Error() string
+	Err() error
+	ErrPublic() string
+	ErrDetail() string
+	Content() bolt.Element
+}
+type ResponseStruct struct {
 	content bolt.Element
-	err     Error
+	err     error
 }
 
-func Response() *ResponseType {
-	return &ResponseType{
-		content: nil,
-		err:     nil,
-	}
+func (r *ResponseStruct) Error() string {
+	return r.err.Error()
 }
-func Content(content bolt.Element) *ResponseType {
-	return &ResponseType{
+func (r *ResponseStruct) Err() error {
+	return r.err
+}
+func (r *ResponseStruct) SetError(err error) {
+	r.err = err
+}
+func (r *ResponseStruct) ErrPublic() string {
+	if r.err == nil {
+		return ""
+	}
+	parts := strings.Split(r.err.Error(), ":")
+	if len(parts) < 1 {
+		return ""
+	}
+	return strings.TrimSpace(parts[0])
+}
+func (r *ResponseStruct) ErrDetail() string {
+	if r.err == nil {
+		return ""
+	}
+	parts := strings.Split(r.err.Error(), ":")
+	if len(parts) < 2 {
+		return ""
+	}
+	// join all the parts after the first one with :
+	return strings.TrimSpace(strings.Join(parts[1:], ": "))
+}
+func (r *ResponseStruct) Content() bolt.Element {
+	return r.content
+}
+
+// Error(err).WrapErr("This dog has wandered off.")
+func (r *ResponseStruct) WrapErr(msg string) *ResponseStruct {
+	r.err = fmt.Errorf("%s: %w", msg, r.err)
+	return r
+}
+
+func Content(content bolt.Element) Response {
+	return &ResponseStruct{
 		content: content,
-		err:     nil,
 	}
 }
-func (r *ResponseType) Content(content bolt.Element) *ResponseType {
-	r.content = content
-	return r
-}
-func (r *ResponseType) Error(message string, details ...string) *ResponseType {
-	r.err = NewError(message, details...)
-	return r
+func Error(err error) Response {
+	res := &ResponseStruct{}
+	res.err = err
+	return res
 }
 
 type Router struct {
@@ -120,15 +159,15 @@ func (r *PathType) Patch(handler Handler) *PathType {
 func pathHandler(w http.ResponseWriter, r *http.Request, router *Router, methods PathType) {
 	if handler, ok := (methods)[r.Method]; ok && handler != nil {
 		response := handler(w, r)
-		if response.err != nil {
+		if response.Err() != nil {
 			if r.Header.Get("HX-Request") != "" {
-				http.Error(w, response.err.Error(), http.StatusInternalServerError)
+				http.Error(w, response.Error(), http.StatusInternalServerError)
 				return
 			}
-			router.layout(w, r, router.errorPage(response.err)).Send(w)
+			router.layout(w, r, router.errorPage(response)).Send(w)
 			return
 		}
-		router.layout(w, r, response.content).Send(w)
+		router.layout(w, r, response.Content()).Send(w)
 		return
 	}
 	http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)

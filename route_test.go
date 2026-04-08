@@ -2,6 +2,7 @@ package boltrouter_test
 
 import (
 	"bytes"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -10,29 +11,30 @@ import (
 	. "github.com/jaredtmartin/boltrouter"
 )
 
-func handleGetDog(w http.ResponseWriter, r *http.Request) *ResponseType {
+func handleGetDog(w http.ResponseWriter, r *http.Request) Response {
 	return Content(bolt.String("Hello, World! Let's Get a Dog!"))
 }
-func handlePostDog(w http.ResponseWriter, r *http.Request) *ResponseType {
+func handlePostDog(w http.ResponseWriter, r *http.Request) Response {
 	return Content(bolt.String("Hello, World! Let's Post a Dog!"))
 }
-func handleDeleteDog(w http.ResponseWriter, r *http.Request) *ResponseType {
+func handleDeleteDog(w http.ResponseWriter, r *http.Request) Response {
 	return Content(bolt.String("Hello, World! Let's Delete a Dog!"))
 }
-func handlePutDog(w http.ResponseWriter, r *http.Request) *ResponseType {
+func handlePutDog(w http.ResponseWriter, r *http.Request) Response {
 	return Content(bolt.String("Hello, World! Let's Put a Dog!"))
 }
-func handlePatchDog(w http.ResponseWriter, r *http.Request) *ResponseType {
+func handlePatchDog(w http.ResponseWriter, r *http.Request) Response {
 	return Content(bolt.String("Hello, World! Let's Patch a Dog!"))
 }
-func handleSimpleError(w http.ResponseWriter, r *http.Request) *ResponseType {
-	return Response().Error("Something went wrong!")
+func handleSimpleError(w http.ResponseWriter, r *http.Request) Response {
+	return Error(fmt.Errorf("Something went wrong!"))
 }
-func handleDetailedError(w http.ResponseWriter, r *http.Request) *ResponseType {
-	return Response().Error("Something went wrong!", "Details about the error.")
+func handleDetailedError(w http.ResponseWriter, r *http.Request) Response {
+	err := fmt.Errorf("Details about the error.")
+	return Error(fmt.Errorf("Something went wrong!: %w", err))
 }
 
-// func handleErrorWithContent(w http.ResponseWriter, r *http.Request) *ResponseType {
+// func handleErrorWithContent(w http.ResponseWriter, r *http.Request) Response {
 // 	return Response().Content(bolt.Button("Log In").Href("/login")).Error("You're not logged in.")
 // }
 
@@ -59,10 +61,11 @@ func testRoute(server *httptest.Server, method, path, expectedBody string, t *te
 func layout(w http.ResponseWriter, r *http.Request, elements ...bolt.Element) bolt.Element {
 	return bolt.NewElement("layout").Children(elements...)
 }
-func errorPage(err Error) bolt.Element {
+func errorPage(err Response) bolt.Element {
+	// get everything before the : in the error message
 	return bolt.NewElement("div").Children(
-		bolt.NewElement("msg").Text(err.Error()),
-		bolt.NewElement("detail").Text(err.Detail()),
+		bolt.NewElement("msg").Text(err.ErrPublic()),
+		bolt.NewElement("detail").Text(err.ErrDetail()),
 	)
 }
 
@@ -112,8 +115,6 @@ func TestErrors(t *testing.T) {
 	server := httptest.NewServer(mux)
 	defer server.Close()
 	testRoute(server, "GET", "/err", "<layout><div><msg>Something went wrong!</msg><detail></detail></div></layout>", t)
-	// router.Path("/err2").Get(handleErrorWithContent)
-	// testRoute(server, "GET", "/err2", "<layout><div><msg>You're not logged in.</msg><detail><a href=\"/login\">Log In</a></detail></div></layout>", t)
 	router.Path("/err3").Get(handleDetailedError)
 	testRoute(server, "GET", "/err3", "<layout><div><msg>Something went wrong!</msg><detail>Details about the error.</detail></div></layout>", t)
 
