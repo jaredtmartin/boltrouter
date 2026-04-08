@@ -11,25 +11,25 @@ import (
 	. "github.com/jaredtmartin/boltrouter"
 )
 
-func handleGetDog(w http.ResponseWriter, r *http.Request) Response {
+func handleGetDog(w http.ResponseWriter, r *http.Request) ResponseType {
 	return Content(bolt.String("Hello, World! Let's Get a Dog!"), bolt.String("Here's some more content!"))
 }
-func handlePostDog(w http.ResponseWriter, r *http.Request) Response {
+func handlePostDog(w http.ResponseWriter, r *http.Request) ResponseType {
 	return Content(bolt.String("Hello, World! Let's Post a Dog!"))
 }
-func handleDeleteDog(w http.ResponseWriter, r *http.Request) Response {
+func handleDeleteDog(w http.ResponseWriter, r *http.Request) ResponseType {
 	return Content(bolt.String("Hello, World! Let's Delete a Dog!"))
 }
-func handlePutDog(w http.ResponseWriter, r *http.Request) Response {
+func handlePutDog(w http.ResponseWriter, r *http.Request) ResponseType {
 	return Content(bolt.String("Hello, World! Let's Put a Dog!"))
 }
-func handlePatchDog(w http.ResponseWriter, r *http.Request) Response {
+func handlePatchDog(w http.ResponseWriter, r *http.Request) ResponseType {
 	return Content(bolt.String("Hello, World! Let's Patch a Dog!"))
 }
-func handleSimpleError(w http.ResponseWriter, r *http.Request) Response {
+func handleSimpleError(w http.ResponseWriter, r *http.Request) ResponseType {
 	return Error(fmt.Errorf("Something went wrong!"))
 }
-func handleDetailedError(w http.ResponseWriter, r *http.Request) Response {
+func handleDetailedError(w http.ResponseWriter, r *http.Request) ResponseType {
 	err := fmt.Errorf("Details about the error.")
 	return Error(fmt.Errorf("Something went wrong!: %w", err))
 }
@@ -61,7 +61,7 @@ func testRoute(server *httptest.Server, method, path, expectedBody string, t *te
 func layout(w http.ResponseWriter, r *http.Request, elements ...bolt.Element) bolt.Element {
 	return bolt.NewElement("layout").Children(elements...)
 }
-func errorPage(err Response) bolt.Element {
+func errorPage(err ResponseType) bolt.Element {
 	// get everything before the : in the error message
 	return bolt.NewElement("div").Children(
 		bolt.NewElement("msg").Text(err.ErrPublic()),

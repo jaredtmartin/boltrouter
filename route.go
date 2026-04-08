@@ -11,30 +11,60 @@ import (
 )
 
 type Layout func(http.ResponseWriter, *http.Request, ...bolt.Element) bolt.Element
-type Handler func(http.ResponseWriter, *http.Request) Response
+type Handler func(http.ResponseWriter, *http.Request) ResponseType
 type PathType map[string]Handler
 type BranchType map[string]*PathType
-type ErrorPageType func(err Response) bolt.Element
-type Response interface {
-	Error() string
+type ErrorPageType func(err ResponseType) bolt.Element
+type ResponseType interface {
 	Err() error
 	ErrPublic() string
 	ErrDetail() string
-	Content() []bolt.Element
+	GetContent() []bolt.Element
 }
 type ResponseStruct struct {
 	content []bolt.Element
+	headers map[string]string
 	err     error
 }
 
-func (r *ResponseStruct) Error() string {
-	return r.err.Error()
+func (r *ResponseStruct) Error(err error) *ResponseStruct {
+	r.err = err
+	return r
+}
+func (r *ResponseStruct) Content(content ...bolt.Element) *ResponseStruct {
+	r.content = content
+	return r
+}
+func (r *ResponseStruct) Success(msg string) *ResponseStruct {
+	r.headers["HX-Success"] = msg
+	return r
+}
+func (r *ResponseStruct) Header(key, value string) *ResponseStruct {
+	r.headers[key] = value
+	return r
+}
+func (r *ResponseStruct) Warning(msg string) *ResponseStruct {
+	r.headers["HX-Warning"] = msg
+	return r
+}
+func (r *ResponseStruct) Info(msg string) *ResponseStruct {
+	r.headers["HX-Info"] = msg
+	return r
+}
+func (r *ResponseStruct) Redirect(msg string) *ResponseStruct {
+	r.headers["HX-Redirect"] = msg
+	return r
+}
+func (r *ResponseStruct) PushUrl(url string) *ResponseStruct {
+	r.headers["HX-Push-Url"] = url
+	return r
+}
+func (r *ResponseStruct) ReplaceUrl(url string) *ResponseStruct {
+	r.headers["HX-Replace-Url"] = url
+	return r
 }
 func (r *ResponseStruct) Err() error {
 	return r.err
-}
-func (r *ResponseStruct) SetError(err error) {
-	r.err = err
 }
 func (r *ResponseStruct) ErrPublic() string {
 	if r.err == nil {
@@ -57,7 +87,7 @@ func (r *ResponseStruct) ErrDetail() string {
 	// join all the parts after the first one with :
 	return strings.TrimSpace(strings.Join(parts[1:], ": "))
 }
-func (r *ResponseStruct) Content() []bolt.Element {
+func (r *ResponseStruct) GetContent() []bolt.Element {
 	return r.content
 }
 
@@ -67,15 +97,20 @@ func (r *ResponseStruct) WrapErr(msg string) *ResponseStruct {
 	return r
 }
 
-func Content(content ...bolt.Element) Response {
+func Response() *ResponseStruct {
 	return &ResponseStruct{
-		content: content,
+		headers: make(map[string]string),
 	}
 }
-func Error(err error) Response {
-	res := &ResponseStruct{}
-	res.err = err
+func Content(content ...bolt.Element) ResponseType {
+	return Response().Content(content...)
+}
+func Error(err error) ResponseType {
+	res := Response().Error(err)
 	return res
+}
+func Success(msg string) ResponseType {
+	return Response().Success(msg)
 }
 
 type Router struct {
@@ -161,13 +196,13 @@ func pathHandler(w http.ResponseWriter, r *http.Request, router *Router, methods
 		response := handler(w, r)
 		if response.Err() != nil {
 			if r.Header.Get("HX-Request") != "" {
-				http.Error(w, response.Error(), http.StatusInternalServerError)
+				http.Error(w, response.ErrPublic(), http.StatusInternalServerError)
 				return
 			}
 			router.layout(w, r, router.errorPage(response)).Send(w)
 			return
 		}
-		router.layout(w, r, bolt.Fragment(response.Content()...)).Send(w)
+		router.layout(w, r, bolt.Fragment(response.GetContent()...)).Send(w)
 		return
 	}
 	http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
