@@ -142,12 +142,13 @@ func NewRouter(mux *http.ServeMux, layout Layout, errorPage ErrorPageType) *Rout
 		Mux:       mux,
 	}
 }
-func (router *Router) Route(routes BranchType) *Router {
-	for path, route := range routes {
-		router.Path(path).Map(*route)
-	}
-	return router
-}
+
+//	func (router *Router) Route(router *Router) *Router {
+//		for path, route := range routes {
+//			router.Path(path).Map(*route)
+//		}
+//		return router
+//	}
 func (router *Router) Handle(pattern string, handler func(http.ResponseWriter, *http.Request)) {
 	router.Mux.HandleFunc(pattern, handler)
 }
