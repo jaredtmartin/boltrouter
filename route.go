@@ -24,6 +24,7 @@ type ResponseType interface {
 	Info(msg string) *ResponseStruct
 	Redirect(msg string) *ResponseStruct
 	PushUrl(url string) *ResponseStruct
+	Back() *ResponseStruct
 	ReplaceUrl(url string) *ResponseStruct
 	Err() error
 	ErrPublic() string
