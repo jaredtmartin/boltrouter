@@ -122,6 +122,9 @@ func Error(err error) ResponseType {
 func Success(msg string) ResponseType {
 	return Response().Success(msg)
 }
+func Back() ResponseType {
+	return Response().Header("HX-Back", "true")
+}
 
 type Router struct {
 	layout    Layout
