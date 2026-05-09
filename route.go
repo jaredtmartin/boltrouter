@@ -66,6 +66,10 @@ func (r *ResponseStruct) Redirect(msg string) *ResponseStruct {
 	r.headers["HX-Redirect"] = msg
 	return r
 }
+func (r *ResponseStruct) Back() *ResponseStruct {
+	r.headers["HX-Back"] = "true"
+	return r
+}
 func (r *ResponseStruct) PushUrl(url string) *ResponseStruct {
 	r.headers["HX-Push-Url"] = url
 	return r
@@ -122,9 +126,6 @@ func Error(err error) ResponseType {
 }
 func Success(msg string) ResponseType {
 	return Response().Success(msg)
-}
-func Back() ResponseType {
-	return Response().Header("HX-Back", "true")
 }
 
 type Router struct {
